@@ -1,0 +1,45 @@
+{% extends "admin/base.html" %}
+
+
+
+{% block content  %}
+
+    <main class="app-main">
+
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1 class="h3 m-0">Lista de Emprestimos</h1>
+                <a href="/"><button type="button" class="btn btn-info  bi bi-arrow-left"></button></a>
+            </div>
+
+            {% if livros %}
+              <h6>Todos os Livros Disponíveis</h6>
+            {% else %}
+              <h6>Nenhum livro encontrado</h6>
+            {% endif %}
+
+            <table class="table table-bordered">
+              <thead>
+                <tr>
+                  
+                  <th>ID</th>
+                  <th>Título</th>
+                  <th>Autor</th>
+                  <th>Gênero</th>
+
+                </tr>
+              </thead>
+              <tbody>
+                {% for livro in livros %}
+                <tr>
+                  <td>{{ livro[0] }}</td>
+                  <td>{{ livro[1] }}</td>
+                  <td>{{ livro[2] }}</td>
+                  <td>{{ livro[3] }}</td>
+                  <td>{{ livro[4] }}</td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+  </main>
+
+{% endblock %}

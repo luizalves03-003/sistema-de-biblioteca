@@ -1,0 +1,101 @@
+{% extends "admin/base.html" %}
+
+
+
+{% block content  %}
+
+          <main class="app-main">
+        <!--begin::App Content Header-->
+        <div class="app-content-header">
+          <div class="container-fluid">
+            <div class="row">
+              <div class="col-sm-6">
+                <h1 class="mb-0 fs-3">Home</h1>
+              </div>
+            </div>
+          </div>
+        </div>
+        <!--end::App Content Header-->
+
+        <!--begin::App Content-->
+        <div class="app-content">
+          <div class="container-fluid">
+            <!--begin::Row (Cards)-->
+            <div class="row">
+              
+              <!-- Card 1: Total de Livros -->
+              <div class="col-lg-3 col-6">
+                <div class="small-box text-bg-primary">
+                  <div class="inner">
+                    <h3>1.250</h3>
+                    <p>Livros da Biblioteca</p>
+                  </div>
+                  <i class="small-box-icon bi bi-book"></i>
+                  <a
+                    href="/livros"
+                    class="small-box-footer link-light link-underline-opacity-0 link-underline-opacity-50-hover"
+                  >
+                    Mais informações <i class="bi bi-arrow-right-circle"></i>
+                  </a>
+                </div>
+              </div>
+
+              <!-- Card 2: Livros Emprestados -->
+              <div class="col-lg-3 col-6">
+                <div class="small-box text-bg-success">
+                  <div class="inner">
+                    <h3>320</h3>
+                    <p>Livros Emprestados</p>
+                  </div>
+                  <i class="small-box-icon bi bi-arrow-left-right"></i>
+                  <a
+                    href="/book_lending"
+                    class="small-box-footer link-light link-underline-opacity-0 link-underline-opacity-50-hover"
+                  >
+                    Mais informações <i class="bi bi-arrow-right-circle"></i>
+                  </a>
+                </div>
+              </div>
+
+              <!-- Card 3: Usuários -->
+              <div class="col-lg-3 col-6">
+                <div class="small-box text-bg-warning">
+                  <div class="inner">
+                    <h3>850</h3>
+                    <p>Usuários</p>
+                  </div>
+                  <i class="small-box-icon bi bi-people-fill"></i>
+                  <a
+                    href="#"
+                    class="small-box-footer link-dark link-underline-opacity-0 link-underline-opacity-50-hover"
+                  >
+                    Mais informações <i class="bi bi-arrow-right-circle"></i>
+                  </a>
+                </div>
+              </div>
+
+              <!-- Card 4: Categorias -->
+              <div class="col-lg-3 col-6">
+                <div class="small-box text-bg-danger">
+                  <div class="inner">
+                    <h3>24</h3>
+                    <p></p>
+                  </div>
+                  <i class="small-box-icon bi bi-tags-fill"></i>
+                  <a
+                    href="#"
+                    class="small-box-footer link-light link-underline-opacity-0 link-underline-opacity-50-hover"
+                  >
+                    Mais informações <i class="bi bi-arrow-right-circle"></i>
+                  </a>
+                </div>
+              </div>
+
+            </div>
+            <!--end::Row (Cards)-->
+          </div>
+        </div>
+        <!--end::App Content-->
+      </main>
+
+{% endblock %}

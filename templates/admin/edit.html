@@ -1,0 +1,57 @@
+{% extends "admin/base.html" %}
+
+{% block content  %}
+
+          <main class="app-main">
+
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1 class="h3 m-0">Editar Livro</h1>
+                <a href="/livros"><button type="button" class="btn btn-info  bi bi-arrow-left"></button></a>
+            </div>
+
+            <div class="table-responsive shadow-sm rounded">
+                <table class="table table-bordered align-middle mb-0">
+                    <thead>
+                        <tr>
+                            <th class="text-center" style="width: 50px;">ID</th>
+                            <th>Título</th>
+                            <th>Autor</th>
+                            <th>Gênero</th>
+                            <th class="text-center">Lançado</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="text-center fw-bold text-muted">{{ livro.id }}</td>
+                            <td class="fw-bold">{{ livro.titulo }}</td>
+                            <td><span class="badge bg-secondary">{{ livro.autor }}</span></td>
+                            <td><span class="badge bg-info text-dark">{{ livro.genero }}</span></td>
+                            <td><span class="badge bg-warning text-dark">{{ livro.lancado }}</span></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        
+            <form action="/edit/{{ livro.id }}" method="POST">
+                <div class="form-group">
+                    <label for="titulo">Título:</label>
+                    <input type="text" class="form-control" id="titulo" name="titulo" value="{{ livro[1] }}" required>
+                </div>
+                <div class="form-group">
+                    <label for="autor">Autor:</label>
+                    <input type="text" class="form-control" id="autor" name="autor" value="{{ livro[2] }}" required>
+                </div>
+                <div class="form-group">
+                    <label for="genero">Gênero:</label>
+                    <input type="text" class="form-control" id="genero" name="genero" value="{{ livro[3] }}" required>
+                </div>
+                <div class="form-group">    
+                    <label for="lancado">Lançado:</label>
+                    <input type="number" class="form-control" id="lancado" name="lancado" value="{{ livro[4] }}" required>
+                </div>
+                <button type="submit" class="btn btn-primary" onclick="return confirm('Realmente deseja alterar esse livro?')">Alterar Livro</button>
+            </form>
+
+      </main>
+
+{% endblock %}

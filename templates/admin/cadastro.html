@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="pt-br">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Sistema | Cadastro</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+
+    <!-- Fonts & Third Party CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/source-sans-3@5.0.12/index.css" crossorigin="anonymous" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/overlayscrollbars@2.11.0/styles/overlayscrollbars.min.css" crossorigin="anonymous" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css" crossorigin="anonymous" />
+
+    <!-- AdminLTE CSS -->
+    <link rel="stylesheet" href="../../static/css/dist/css/adminlte.css" />
+  </head>
+  <body class="register-page bg-body-secondary">
+    <main class="register-box">
+      <div class="register-logo">
+        <a href="#"><b>Sistema Biblioteca</b></a>
+      </div>
+      <div class="card">
+        <div class="card-body register-card-body">
+          <p class="register-box-msg">Cadastrar novo usuário</p>
+
+          <!-- Bloco de Exibição de Mensagens do Flask (Sucesso / Erro) -->
+          {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+              {% for category, message in messages %}
+                <div class="alert alert-{{ category if category != 'danger' else 'danger' }} alert-dismissible fade show" role="alert">
+                  {{ message }}
+                  <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+              {% endfor %}
+            {% endif %}
+          {% endwith %}
+
+          <form action="{{ url_for('cadastro') }}" method="post">
+            <!-- Nome de Usuário -->
+            <label class="visually-hidden" for="registerName">Nome de Usuário</label>
+            <div class="input-group mb-3">
+              <input id="registerName" name="nome" type="text" class="form-control" placeholder="Nome de Usuário" value="{{ nome or '' }}" required />
+              <div class="input-group-text">
+                <span class="bi bi-person"></span>
+              </div>
+            </div>
+
+            <!-- Senha Principal -->
+            <label class="visually-hidden" for="registerPassword">Senha</label>
+            <div class="input-group mb-3">
+              <input id="registerPassword" name="senha" type="password" class="form-control" placeholder="Senha" required />
+              <div class="input-group-text">
+                <span class="bi bi-lock-fill"></span>
+              </div>
+            </div>
+
+            <!-- Confirmar Senha -->
+            <label class="visually-hidden" for="registerConfirmPassword">Confirmar Senha</label>
+            <div class="input-group mb-3">
+              <input id="registerConfirmPassword" name="confirmar_senha" type="password" class="form-control" placeholder="Confirmar Senha" required />
+              <div class="input-group-text">
+                <span class="bi bi-shield-lock-fill"></span>
+              </div>
+            </div>
+
+            <!-- Seletor de Perfil -->
+            <label class="visually-hidden" for="registerPerfil">Perfil</label>
+            <div class="input-group mb-3">
+              <select id="registerPerfil" name="perfil" class="form-select" required>
+                <option value="" disabled {% if not perfil %}selected{% endif %}>Selecione o tipo de perfil...</option>
+                <option value="usuario" {% if perfil == 'usuario' %}selected{% endif %}>Usuário Comum</option>
+                <option value="admin" {% if perfil == 'admin' %}selected{% endif %}>Administrador</option>
+              </select>
+              <div class="input-group-text">
+                <span class="bi bi-person-badge"></span>
+              </div>
+            </div>
+
+            <!-- Mostrar Senhas -->
+            <div class="form-check mb-3">
+              <input class="form-check-input" type="checkbox" id="flexCheckDefault" name="mostrar_senha">
+              <label class="form-check-label" for="flexCheckDefault"> Mostrar senhas </label>
+            </div>
+
+            <!-- Botão de Envio -->
+            <div class="row">
+              <div class="col-12">
+                <div class="d-grid gap-2">
+                  <button type="submit" class="btn btn-primary">Cadastrar</button>
+                </div>
+              </div>
+            </div>
+          </form>
+
+        </div>
+      </div>
+    </main>
+
+    <!-- Scripts do Bootstrap e AdminLTE -->
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.8/dist/umd/popper.min.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.min.js" crossorigin="anonymous"></script>
+    <script src="{{ url_for('static', filename='js/adminlte.js') }}"></script>
+    
+    <!-- SCRIPT DE MOSTRAR SENHA (Atua em ambos os campos de senha) -->
+    <script>
+      document.addEventListener('DOMContentLoaded', function () {
+        const checkboxMostrarSenha = document.getElementById('flexCheckDefault');
+        const inputSenha = document.getElementById('registerPassword');
+        const inputConfirmarSenha = document.getElementById('registerConfirmPassword');
+
+        if (checkboxMostrarSenha && inputSenha && inputConfirmarSenha) {
+          checkboxMostrarSenha.addEventListener('change', function () {
+            const tipo = this.checked ? 'text' : 'password';
+            inputSenha.type = tipo;
+            inputConfirmarSenha.type = tipo;
+          });
+        }
+      });
+    </script>
+
+    <!-- Configure OverlayScrollbars -->
+    <script>
+      const SELECTOR_SIDEBAR_WRAPPER = '.sidebar-wrapper';
+      const Default = {
+        scrollbarTheme: 'os-theme-light',
+        scrollbarAutoHide: 'leave',
+        scrollbarClickScroll: true,
+      };
+      document.addEventListener('DOMContentLoaded', function () {
+        const sidebarWrapper = document.querySelector(SELECTOR_SIDEBAR_WRAPPER);
+        const isMobile = window.innerWidth <= 992;
+
+        if (
+          sidebarWrapper &&
+          OverlayScrollbarsGlobal?.OverlayScrollbars !== undefined &&
+          !isMobile
+        ) {
+          OverlayScrollbarsGlobal.OverlayScrollbars(sidebarWrapper, {
+            scrollbars: {
+              theme: Default.scrollbarTheme,
+              autoHide: Default.scrollbarAutoHide,
+              clickScroll: Default.scrollbarClickScroll,
+            },
+          });
+        }
+      });
+    </script>
+  </body>
+</html>
