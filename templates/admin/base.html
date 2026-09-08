@@ -95,13 +95,13 @@
             <li class="nav-item dropdown user-menu">
               <a href="#" class="nav-link dropdown-toggle" data-bs-toggle="dropdown">
                 <img src="{{ url_for('static', filename='css/dist/assets/img/user1.jpg') }}" class="user-image rounded-circle shadow" alt="User Image" />
-                <span class="d-none d-md-inline">Alexander Pierce</span>
+                <span class="d-none d-md-inline">Luiz Cauã</span>
               </a>
               <ul class="dropdown-menu dropdown-menu-lg dropdown-menu-end">
                 <li class="user-header text-bg-primary">
                   <img src="{{ url_for('static', filename='css/dist/assets/img/user1.jpg') }}" class="rounded-circle shadow" alt="User Image" />
                   <p>
-                    Alexander Pierce - Bibliotecário
+                    Luiz Cauã - Bibliotecário
                     <small>Membro desde Set. 2026</small>
                   </p>
                 </li>
@@ -124,22 +124,34 @@
           <nav class="mt-2" aria-label="Main navigation">
             <ul class="nav sidebar-menu flex-column" data-lte-toggle="treeview" id="navigation">
               <li class="nav-item">
-                <a href="/" class="nav-link">
+                <a href="/menu_principal" class="nav-link">
                   <i class="nav-icon bi bi-house"></i>
                   <p>Home</p>
                 </a>
               </li>
+
               <li class="nav-item">
-                <a href="/" class="nav-link">
-                  <i class="nav-icon bi bi-people"></i>
-                  <p>Usuários</p>
+                <a href="#" class="nav-link">
+                  <i class="nav-icon bi bi-archive"></i>
+                    <p>
+                      Biblioteca
+                      <i class="nav-arrow bi bi-chevron-right"></i>
+                    </p>
                 </a>
-              </li>
-              <li class="nav-item">
-                <a href="{{ url_for('buscar_livros') }}" class="nav-link">
-                  <i class="nav-icon bi bi-book"></i>
-                  <p>Livros</p>
-                </a>
+                <ul class="nav nav-treeview">
+                  <li class="nav-item">
+                    <a href="{{ url_for('livros') }}" class="nav-link">
+                      <i class="nav-icon bi bi-book"></i>
+                      <p>Livros da Biblioteca</p>
+                    </a>
+                  </li>
+                  <li class="nav-item">
+                    <a href="#" class="nav-link">
+                      <i class="nav-icon bi bi-people"></i>
+                      <p>Usuários</p>
+                    </a>
+                  </li>
+                </ul>
               </li>
             </ul>
           </nav>
@@ -186,5 +198,8 @@
         }
       });
     </script>
+
+
+
   </body>
 </html>

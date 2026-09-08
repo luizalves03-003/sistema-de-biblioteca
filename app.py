@@ -31,7 +31,10 @@ def init_db():
                 perfil TEXT NOT NULL DEFAULT 'usuario'
             )
             
-        ''')
+        '''),
+
+
+
         conn.execute('''
                 CREATE TABLE IF NOT EXISTS emprestimos(
                      id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -55,18 +58,20 @@ def init_db():
         conn.commit()
 
         print("\n ---- BIBLIOTECA ABERTA ---- ")
-
+#---conexao com o banco de dados---#
 def conexao():
     with sqlite3.connect(DATABASE) as conn:
         conn.row_factory = sqlite3.Row
         return conn
 
+#---livros---#
 @app.route('/livros', methods=['GET'])
 def livros():
     conn = conexao()
     livros = conn.execute('SELECT * FROM livros')
     return render_template('admin/livros.html', livros=livros)
 
+#---buscar livros---#
 @app.route('/buscar_livros', methods=['GET'])
 def buscar_livros():
     query = request.args.get('query', '').strip()
@@ -84,14 +89,26 @@ def buscar_livros():
             flash('Nenhum livro encontrado para a busca realizada.', 'warning')
     return render_template('admin/livros.html', livros=livros)
 
-
+#---emprestimos---#
 @app.route('/book_lending', methods=['GET'])
 def book_lending():
     conn = conexao()
-    livros = conn.execute('SELECT * FROM livros')
+    livros = conn.execute('''
+        SELECT 
+            emprestimos.id AS emprestimo_id,
+            usuarios.nome AS nome_usuario,
+            livros.titulo AS titulo_livro,
+            emprestimos.data_emprestimo,
+            emprestimos.data_devolucao
+        FROM emprestimos
+        JOIN livros ON emprestimos.livro_id = livros.id
+        JOIN usuarios ON emprestimos.usuario_id = usuarios.id
+    ''').fetchall()
+    conn.close()
+    
     return render_template('admin/book_lending.html', livros=livros)
 
-
+#---adicionar livro---#
 @app.route('/add_livro', methods=['GET', 'POST'])
 def add_livro():
     if request.method == 'POST':
@@ -109,7 +126,7 @@ def add_livro():
         return redirect(url_for('livros'))
     return render_template('admin/add_livro.html')
 
-
+#---editar livro---#
 @app.route('/edit/<int:id>', methods=['POST', 'GET'])
 def edit(id):
 
@@ -136,8 +153,7 @@ def edit(id):
 
     return render_template('admin/edit.html', livro=livro)
 
-
-
+#---login do usuario---#
 @app.route("/login", methods=['GET', 'POST'])
 def login():
     if 'usuario' in session:
@@ -167,11 +183,11 @@ def login():
 
     return render_template('admin/login.html')
 
-
+#---verifica se o usuario é admin---#
 def administrador():
     return session.get('perfil') == 'admin'
 
-
+#---cadastro de usuarios---#
 @app.route('/cadastro', methods=['GET', 'POST'])
 def cadastro():
     if request.method == 'POST':
@@ -180,9 +196,8 @@ def cadastro():
         confirmar_senha = request.form.get('confirmar_senha', '')
         perfil = request.form.get('perfil', 'usuario')
 
-        perfil = request.form.get('perfil', 'usuario')  # Padrão para 'usuario' se não fornecido
+        perfil = request.form.get('perfil', 'usuario')  
 
-        # 1. Validações
         if not nome:
             flash('Erro: O nome de usuário é obrigatório.', 'danger')
             return render_template('admin/cadastro.html', nome=nome, perfil=perfil)
@@ -195,10 +210,8 @@ def cadastro():
             flash('Erro: A senha deve ter pelo menos 8 caracteres.', 'danger')
             return render_template('admin/cadastro.html', nome=nome, perfil=perfil)
 
-        # 2. Criptografia
         senha_hash = bcrypt.generate_password_hash(senha).decode('utf-8')
 
-        # 3. Persistência no Banco de Dados
         conn = conexao()
         try:
             conn.execute(
@@ -207,22 +220,99 @@ def cadastro():
             )
             conn.commit()
             
-            # Flash movido para DENTRO do sucesso
             flash('Usuário cadastrado com sucesso!', 'success')
-            return redirect(url_for('usuarios')) # Redireciona para o login ou lista de usuários
+            return redirect(url_for('usuarios'))
 
         except sqlite3.IntegrityError:
             flash('Erro: Nome de usuário já existe.', 'danger')
             return render_template('admin/cadastro.html', nome=nome, perfil=perfil)
             
         finally:
-            conn.close() # Garante que a conexão sempre será fechada
-
-    # Carregamento da página via GET
+            conn.close()
     return render_template('admin/cadastro.html')
-        
+
+#---listar usuarios---#
+@app.route('/usuarios', methods=['GET'])
+def usuarios():
+    conn = conexao()
+    usuarios = conn.execute('SELECT * FROM usuarios')
+    return render_template('admin/usuarios.html', usuarios=usuarios)
+
+#---buscar usuarios---#        
+@app.route('/buscar_usuarios', methods=['GET'])
+def buscar_usuarios():
+    query = request.args.get('query', '').strip()
+
+    conn = conexao()
+    usuarios = conn.execute('SELECT * FROM usuarios')
+
+    if query:
+        usuarios = conn.execute(
+            'SELECT * FROM usuarios WHERE nome LIKE ?', 
+            (f'%{query}%',)
+        ).fetchall()
+
+        if not usuarios:
+            flash('Nenhum usuário encontrado para a busca realizada.', 'warning')
+    return render_template('admin/usuarios.html', usuarios=usuarios)
 
 
+#---promover usuario---#
+@app.route('/usuarios/promover/<int:id>', methods=['POST'])
+def promover_usuario(id):
+    conn = conexao()
+    cursor = conn.execute("SELECT perfil FROM usuarios WHERE id=?", (id,))
+    usuario = cursor.fetchone()
+    
+    if usuario is None:
+        flash('Usuário não encontrado.', 'error')
+        return redirect(url_for('usuarios'))
+    elif usuario['perfil'] == 'admin':
+        flash('Usuário já é administrador.', 'error')
+        return redirect(url_for('usuarios'))
+    elif usuario['perfil'] == 'usuario':
+        conn.execute("UPDATE usuarios SET perfil='admin' WHERE id=?", (id,))
+        conn.commit()
+        flash('Usuário promovido a Administrador com sucesso!', 'success')
+        return redirect(url_for('usuarios'))
+
+    conn.close()
+    return redirect(url_for('usuarios'))
+
+#---rebaixar usuario---#
+@app.route('/usuarios/rebaixar/<int:id>', methods=['POST'])
+def rebaixar_usuario(id):
+    conn = conexao()
+    cursor = conn.execute("SELECT perfil FROM usuarios WHERE id=?", (id,))
+    usuario = cursor.fetchone()
+    
+    if usuario is None:
+        conn.close()
+        flash('Usuário não encontrado.', 'error')
+        return redirect(url_for('usuarios'))
+    
+    elif usuario['perfil'] == 'admin':
+        conn.execute("UPDATE usuarios SET perfil='usuario' WHERE id=?", (id,))
+        conn.commit()
+
+        flash('Usuário rebaixado para Usuário comum com sucesso!', 'success')
+        return redirect(url_for('usuarios'))
+    else:
+        conn.close()
+        flash('Este usuário não é um administrador.', 'error')
+        return redirect(url_for('usuarios'))
+    
+#---deletar usuario---#
+@app.route('/usuarios/deletar/<int:id>', methods=['POST'])
+def deletar_usuario(id):
+    conn = conexao()
+    cursor = conn.execute("DELETE FROM usuarios WHERE id=?", (id,))
+    if cursor.rowcount == 0:
+        return jsonify({'erro': 'Usuário não encontrado'}), 404
+    conn.commit()
+    return redirect(url_for('usuarios'))
+
+#---deletar livro---#
 @app.route('/livros/deletar/<int:id>', methods=['POST'])
 def deletar_livro(id):
         conn = conexao()
@@ -232,20 +322,21 @@ def deletar_livro(id):
         conn.commit()
         return redirect(url_for('livros'))
 
-
+#---logout do usuario---#
 @app.route('/logout')
 def logout():
     session.clear()
     return redirect(url_for('login'))
 
+#---menu principal---#
 @app.route('/menu_principal')
 def menu_principal():
     return render_template('admin/card.html')
 
+
 @app.route('/')
 def index():
     return render_template('admin/login.html')
-
 
 if __name__ == '__main__':
     init_db()
