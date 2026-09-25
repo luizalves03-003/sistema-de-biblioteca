@@ -69,6 +69,7 @@
                 <option value="" disabled {% if not perfil %}selected{% endif %}>Selecione o tipo de perfil...</option>
                 <option value="usuario" {% if perfil == 'usuario' %}selected{% endif %}>Usuário Comum</option>
                 <option value="admin" {% if perfil == 'admin' %}selected{% endif %}>Administrador</option>
+                <option value="max" {% if perfil == 'max' %}selected{% endif %}>Usuário Max</option>
               </select>
               <div class="input-group-text">
                 <span class="bi bi-person-badge"></span>

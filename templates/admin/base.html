@@ -106,7 +106,7 @@
                   </p>
                 </li>
                 <li class="user-footer">
-                  <a href="#" class="btn btn-outline-danger float-end">Sair</a>
+                  <a href="{{ url_for('logout') }}" class="btn btn-outline-danger float-end">Sair</a>
                 </li>
               </ul>
             </li>
@@ -131,7 +131,7 @@
               </li>
 
               <li class="nav-item">
-                <a href="#" class="nav-link">
+                <a class="nav-link">
                   <i class="nav-icon bi bi-archive"></i>
                     <p>
                       Biblioteca
@@ -146,7 +146,7 @@
                     </a>
                   </li>
                   <li class="nav-item">
-                    <a href="#" class="nav-link">
+                    <a href="{{ url_for('usuarios') }}" class="nav-link">
                       <i class="nav-icon bi bi-people"></i>
                       <p>Usuários</p>
                     </a>

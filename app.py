@@ -2,6 +2,7 @@ from flask import Flask, jsonify, request, render_template, url_for, redirect, s
 import sqlite3
 from flask_bcrypt import Bcrypt
 from datetime import datetime
+from functools import wraps
 
 
 app = Flask(__name__)
@@ -52,28 +53,58 @@ def init_db():
         total_usuarios = cursor.fetchone()[0]
 
         if total_usuarios == 0:
-            senha_admin = bcrypt.generate_password_hash('admin123').decode('utf-8')
-            cursor.execute('INSERT INTO usuarios (nome, senha, perfil) VALUES (?, ?, ?)', ('admin', senha_admin, 'admin'))
+            senha_usermax = bcrypt.generate_password_hash('max123').decode('utf-8')
+            cursor.execute('INSERT INTO usuarios (nome, senha, perfil) VALUES (?, ?, ?)', ('usermax', senha_usermax, 'max'))
         
         conn.commit()
 
         print("\n ---- BIBLIOTECA ABERTA ---- ")
+
 #---conexao com o banco de dados---#
 def conexao():
-    with sqlite3.connect(DATABASE) as conn:
-        conn.row_factory = sqlite3.Row
-        return conn
+    conn = sqlite3.connect(DATABASE)
+    conn.row_factory = sqlite3.Row
+    return conn
+
+#---verifica se o usuario está logado---#
+def usuario_logado():
+    return 'usuario_id' in session
+
+def administrador():
+    return session.get('perfil') in ('admin', 'max')
+
+def usuario_max():
+    return session.get('perfil') == 'max'
+
+def login_necessario(func):
+    @wraps(func)
+    def verificar_login(*args, **kwargs):
+
+        if not usuario_logado():
+            flash('Você precisa estar logado para acessar essa página')
+            return redirect(url_for('login'))
+
+        return func(*args, **kwargs)
+    return verificar_login
 
 #---livros---#
 @app.route('/livros', methods=['GET'])
+@login_necessario
 def livros():
+
+    if not usuario_logado():
+        flash('VÁ LOGAR', 'error')
+        return redirect(url_for('login'))
+
     conn = conexao()
     livros = conn.execute('SELECT * FROM livros')
     return render_template('admin/livros.html', livros=livros)
 
 #---buscar livros---#
 @app.route('/buscar_livros', methods=['GET'])
+@login_necessario
 def buscar_livros():
+
     query = request.args.get('query', '').strip()
 
     conn = conexao()
@@ -90,27 +121,22 @@ def buscar_livros():
     return render_template('admin/livros.html', livros=livros)
 
 #---emprestimos---#
-@app.route('/book_lending', methods=['GET'])
-def book_lending():
-    conn = conexao()
-    livros = conn.execute('''
-        SELECT 
-            emprestimos.id AS emprestimo_id,
-            usuarios.nome AS nome_usuario,
-            livros.titulo AS titulo_livro,
-            emprestimos.data_emprestimo,
-            emprestimos.data_devolucao
-        FROM emprestimos
-        JOIN livros ON emprestimos.livro_id = livros.id
-        JOIN usuarios ON emprestimos.usuario_id = usuarios.id
-    ''').fetchall()
-    conn.close()
+@app.route('/empretimos', methods=['GET'])
+@login_necessario
+def emprestimos():
+
     
-    return render_template('admin/book_lending.html', livros=livros)
+    return render_template('admin/empretimos.html', livros=livros)
 
 #---adicionar livro---#
 @app.route('/add_livro', methods=['GET', 'POST'])
+@login_necessario
 def add_livro():
+
+    if not administrador():
+        flash('Você precisa ser um adminstrador para acessar essa página')
+        return redirect(url_for('livros'))
+
     if request.method == 'POST':
 
         titulo = request.form['titulo']
@@ -128,7 +154,12 @@ def add_livro():
 
 #---editar livro---#
 @app.route('/edit/<int:id>', methods=['POST', 'GET'])
+@login_necessario
 def edit(id):
+
+    if not administrador():
+        flash('Você precisa ser um adminstrador para acessar essa página')
+        return redirect(url_for('livros'))
 
     if request.method == 'POST':
         titulo = request.form.get('titulo')
@@ -156,8 +187,6 @@ def edit(id):
 #---login do usuario---#
 @app.route("/login", methods=['GET', 'POST'])
 def login():
-    if 'usuario' in session:
-        return redirect(url_for('menu_principal'))
 
     if request.method == 'POST':
 
@@ -168,35 +197,47 @@ def login():
             return render_template('login.html', erro='Preencha todos os campos.')
 
         conn = conexao()
-        usuario = conn.execute(
+        try:
+            usuario = conn.execute(
                 "SELECT * FROM usuarios WHERE nome=?", (nome,)).fetchone()
 
-        if usuario:
-            senha_correta = bcrypt.check_password_hash(usuario['senha'], senha)
-            if senha_correta:
-                session['usuario'] = usuario['nome']
-                session['usuario_id'] = usuario['id']
-                session['perfil'] = usuario['perfil']
-                return redirect(url_for('menu_principal'))
+            if usuario is None:
+               flash('Usuário ou senha incorretos.', 'error')
+               return render_template('admin/login.html')
 
-        return render_template('admin/login.html', erro='Usuário ou senha incorretos.')
+            senha_correta = bcrypt.check_password_hash(usuario['senha'], senha)
+
+            if not senha_correta:
+                flash('Usuário ou senha incorretos.', 'error')
+                return render_template('admin/login.html')
+
+            session.clear()
+
+            session['usuario'] = usuario['nome']
+            session['usuario_id'] = usuario['id']
+            session['perfil'] = usuario['perfil']
+            return redirect(url_for('menu_principal'))
+
+        finally:
+            conn.close()
 
     return render_template('admin/login.html')
 
-#---verifica se o usuario é admin---#
-def administrador():
-    return session.get('perfil') == 'admin'
 
 #---cadastro de usuarios---#
 @app.route('/cadastro', methods=['GET', 'POST'])
+@login_necessario
 def cadastro():
+
+    if not administrador():
+        flash('Você não tem permissão para acessar essa página')
+        return redirect(url_for('menu_principal'))
+
     if request.method == 'POST':
         nome = request.form.get('nome', '').strip()
         senha = request.form.get('senha', '')
         confirmar_senha = request.form.get('confirmar_senha', '')
         perfil = request.form.get('perfil', 'usuario')
-
-        perfil = request.form.get('perfil', 'usuario')  
 
         if not nome:
             flash('Erro: O nome de usuário é obrigatório.', 'danger')
@@ -233,14 +274,27 @@ def cadastro():
 
 #---listar usuarios---#
 @app.route('/usuarios', methods=['GET'])
+@login_necessario
 def usuarios():
+
+    if not administrador():
+        flash('Você não tem permissão para acessar essa página')
+        return redirect(url_for('menu_principal'))
+
     conn = conexao()
     usuarios = conn.execute('SELECT * FROM usuarios')
     return render_template('admin/usuarios.html', usuarios=usuarios)
 
 #---buscar usuarios---#        
 @app.route('/buscar_usuarios', methods=['GET'])
+@login_necessario
 def buscar_usuarios():
+
+    if not administrador():
+        flash('Você não tem permissão para acessar essa página')
+        return redirect(url_for('menu_principal'))
+
+
     query = request.args.get('query', '').strip()
 
     conn = conexao()
@@ -259,7 +313,13 @@ def buscar_usuarios():
 
 #---promover usuario---#
 @app.route('/usuarios/promover/<int:id>', methods=['POST'])
+@login_necessario
 def promover_usuario(id):
+
+    if not usuario_max():
+        flash('Você não tem permissão para acessar essa página')
+        return redirect(url_for('menu_principal'))
+
     conn = conexao()
     cursor = conn.execute("SELECT perfil FROM usuarios WHERE id=?", (id,))
     usuario = cursor.fetchone()
@@ -267,9 +327,17 @@ def promover_usuario(id):
     if usuario is None:
         flash('Usuário não encontrado.', 'error')
         return redirect(url_for('usuarios'))
+
+    elif usuario['perfil'] == 'max':
+        conn.execute("UPDATE usuarios SET perfil='usuario' WHERE id=?", (id,))
+        conn.commit()
+    
     elif usuario['perfil'] == 'admin':
-        flash('Usuário já é administrador.', 'error')
+        conn.execute("UPDATE usuarios SET perfil='max' WHERE id=?", (id,))
+        conn.commit()
+        flash('Usuário promovido a Administrador Max com sucesso!', 'success')
         return redirect(url_for('usuarios'))
+
     elif usuario['perfil'] == 'usuario':
         conn.execute("UPDATE usuarios SET perfil='admin' WHERE id=?", (id,))
         conn.commit()
@@ -281,7 +349,13 @@ def promover_usuario(id):
 
 #---rebaixar usuario---#
 @app.route('/usuarios/rebaixar/<int:id>', methods=['POST'])
+@login_necessario
 def rebaixar_usuario(id):
+
+    if not usuario_max():
+        flash('Você não tem permissão para acessar essa página')
+        return redirect(url_for('menu_principal'))
+
     conn = conexao()
     cursor = conn.execute("SELECT perfil FROM usuarios WHERE id=?", (id,))
     usuario = cursor.fetchone()
@@ -291,7 +365,7 @@ def rebaixar_usuario(id):
         flash('Usuário não encontrado.', 'error')
         return redirect(url_for('usuarios'))
     
-    elif usuario['perfil'] == 'admin':
+    elif usuario['perfil'] == 'max':
         conn.execute("UPDATE usuarios SET perfil='usuario' WHERE id=?", (id,))
         conn.commit()
 
@@ -304,7 +378,13 @@ def rebaixar_usuario(id):
     
 #---deletar usuario---#
 @app.route('/usuarios/deletar/<int:id>', methods=['POST'])
+@login_necessario
 def deletar_usuario(id):
+
+    if not usuario_max():
+        flash('Você não tem permissão para acessar essa página')
+        return redirect(url_for('menu_principal'))
+
     conn = conexao()
     cursor = conn.execute("DELETE FROM usuarios WHERE id=?", (id,))
     if cursor.rowcount == 0:
@@ -314,23 +394,33 @@ def deletar_usuario(id):
 
 #---deletar livro---#
 @app.route('/livros/deletar/<int:id>', methods=['POST'])
+@login_necessario
 def deletar_livro(id):
-        conn = conexao()
-        cursor = conn.execute("DELETE FROM livros WHERE id=?", (id,))
-        if cursor.rowcount == 0:
-            return jsonify({'erro': 'Livro não encontrado'}), 404
-        conn.commit()
-        return redirect(url_for('livros'))
+
+    if not administrador():
+        flash('Você não tem permissão para acessar essa página')
+        return redirect(url_for('menu_principal'))
+
+    conn = conexao()
+    cursor = conn.execute("DELETE FROM livros WHERE id=?", (id,))
+
+    if cursor.rowcount == 0:
+        return jsonify({'erro': 'Livro não encontrado'}), 404
+    conn.commit()
+    return redirect(url_for('livros'))
 
 #---logout do usuario---#
 @app.route('/logout')
+@login_necessario
 def logout():
     session.clear()
     return redirect(url_for('login'))
 
 #---menu principal---#
 @app.route('/menu_principal')
+@login_necessario
 def menu_principal():
+
     return render_template('admin/card.html')
 
 

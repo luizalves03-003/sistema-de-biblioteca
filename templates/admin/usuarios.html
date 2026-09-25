@@ -4,16 +4,12 @@
 
 <main class="app-main">
     
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h1 class="h3 m-0">Usuários da Biblioteca</h1>
-        <a href="/" class="btn btn-info bi bi-arrow-left"></a>
-    </div>
 
 
     {% with messages = get_flashed_messages(with_categories=true) %}
       {% if messages %}
         {% for category, message in messages %}
-          <div class="alert alert-{{ category if category != 'message' else 'info' }} alert-dismissible fade show" role="alert">
+          <div class="alert alert-{{ category if category != 'danger' else 'danger' }} alert-dismissible fade show" role="alert">
             {{ message }}
             <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
           </div>
@@ -33,8 +29,7 @@
     </form>
 
     <div class="d-flex justify-content-between align-items-center mb-3">
-
-        <a href="/cadastro" class="btn btn-primary bi bi-plus">Adicionar Usuário</a>
+        <a href="{{ url_for('cadastro') }}" class="btn btn-primary bi bi-plus">Adicionar Usuário</a>
     </div>
 
     <div class="table-responsive shadow-sm rounded">
@@ -44,41 +39,59 @@
             <th class="text-center" style="width: 50px;">ID</th>
             <th>Nome</th>
             <th class="text-center">Perfil</th>
-            <th class="text-center" style="width: 120px;">Ações</th>
+            <th class="text-center" style="width: 140px;">Ações</th>
           </tr>
         </thead>
         <tbody>
           {% for usuario in usuarios %}
-            <tr>
-              <td class="text-center fw-bold text-muted">{{ loop.index }}</td>
-              <td class="fw-bold">{{ usuario.nome }}</td>
-              {% if usuario.perfil == 'admin' %}
-                <td><span class="badge bg-success">{{ usuario.perfil }}</span></td>
+          <tr>
+            <td class="text-center fw-bold text-muted">{{ loop.index }}</td>
+            <td class="fw-bold">{{ usuario.nome }}</td>
+            
+            <!-- Badges para os Perfis -->
+            <td class="text-center">
+              {% if usuario.perfil == 'max' %}
+                <span class="badge bg-info">USUÁRIO MAX</span>
+              {% elif usuario.perfil == 'admin' %}
+                <span class="badge bg-success">ADMIN</span>
               {% else %}
-                <td><span class="badge bg-secondary">{{ usuario.perfil }}</span></td>
+                <span class="badge bg-secondary">COMUM</span>
               {% endif %}
-              <td class="text-center">
+            </td>
 
-              {% if usuario.perfil != 'usuario' %}
-                 <form action="/usuarios/rebaixar/{{ usuario.id }}" method="POST" class="d-inline" onsubmit="return confirm('Realmente deseja rebaixar esse usuário?')">
-                  <button type="submit" class="btn btn-warning btn-sm"><i class="bi bi-arrow-down"></i></button>
-                </form>     
+            <!-- Ações Dinâmicas conforme o Perfil -->
+            <td class="text-center">
               
-              {% else %}
-
-                <form action="/usuarios/promover/{{ usuario.id }}" method="POST" class="d-inline" onsubmit="return confirm('Realmente deseja promover esse usuário?')">
-                  <button type="submit" class="btn btn-warning btn-sm"><i class="bi bi-arrow-up"></i></button>
+              <!-- Botão de Promover (Só exibe se NÃO for Max) -->
+              {% if usuario.perfil != 'max' %}
+                <form action="{{ url_for('promover_usuario', id=usuario.id) }}" method="POST" class="d-inline" onsubmit="return confirm('Promover este usuário?')">
+                  <button type="submit" class="btn btn-success btn-sm" title="Promover">
+                    <i class="bi bi-arrow-up"></i>
+                  </button>
                 </form>
               {% endif %}
-                
-                <form action="/usuarios/deletar/{{ usuario.id }}" method="POST" class="d-inline" onsubmit="return confirm('Realmente deseja excluir esse usuário?')">
-                  <button type="submit" class="btn btn-danger btn-sm"><i class="bi bi-trash"></i></button>
+
+              <!-- Botão de Rebaixar (Só exibe se NÃO for Usuário Comum) -->
+              {% if usuario.perfil != 'usuario' %}
+                <form action="{{ url_for('rebaixar_usuario', id=usuario.id) }}" method="POST" class="d-inline" onsubmit="return confirm('Rebaixar este usuário?')">
+                  <button type="submit" class="btn btn-warning btn-sm" title="Rebaixar">
+                    <i class="bi bi-arrow-down"></i>
+                  </button>
                 </form>
-              </td>
+              {% endif %}
+
+              <!-- Botão de Deletar -->
+              <form action="{{ url_for('deletar_usuario', id=usuario.id) }}" method="POST" class="d-inline" onsubmit="return confirm('Realmente deseja excluir esse usuário?')">
+                <button type="submit" class="btn btn-danger btn-sm" title="Excluir">
+                  <i class="bi bi-trash"></i>
+                </button>
+              </form>
+
+            </td>
           </tr>
           {% else %}
           <tr>
-            <td colspan="6" class="text-center py-4 text-muted">
+            <td colspan="4" class="text-center py-4 text-muted">
                 Nenhum usuário encontrado.
             </td>
           </tr>
