@@ -3,8 +3,10 @@
 {% block content %}
 
 <main class="app-main">
-    
-
+    <div class="d-flex justify-content-between align-items-center mb-4">
+       <h1 class="h3 m-0">Gerenciar Usuários</h1>
+       <a href="{{ url_for('menu_principal') }}" class="btn btn-info bi bi-arrow-left"></a>
+    </div>
 
     {% with messages = get_flashed_messages(with_categories=true) %}
       {% if messages %}
@@ -51,11 +53,11 @@
             <!-- Badges para os Perfis -->
             <td class="text-center">
               {% if usuario.perfil == 'max' %}
-                <span class="badge bg-info">USUÁRIO MAX</span>
+                <span class="badge bg-info">ADMINISTRADOR MÁXIMO</span>
               {% elif usuario.perfil == 'admin' %}
-                <span class="badge bg-success">ADMIN</span>
+                <span class="badge bg-success">ADMINISTRADOR</span>
               {% else %}
-                <span class="badge bg-secondary">COMUM</span>
+                <span class="badge bg-secondary">USUÁRIO</span>
               {% endif %}
             </td>
 

@@ -87,14 +87,17 @@ def login_necessario(func):
         return func(*args, **kwargs)
     return verificar_login
 
+def existe_outro_max(usuario_id):
+    conn = conexao()
+    cursor = conn.execute("SELECT COUNT(*) FROM usuarios WHERE perfil='max' AND id != ?", (usuario_id,))
+    count = cursor.fetchone()[0]
+    conn.close()
+    return count > 0
+
 #---livros---#
 @app.route('/livros', methods=['GET'])
 @login_necessario
 def livros():
-
-    if not usuario_logado():
-        flash('VÁ LOGAR', 'error')
-        return redirect(url_for('login'))
 
     conn = conexao()
     livros = conn.execute('SELECT * FROM livros')
@@ -120,13 +123,19 @@ def buscar_livros():
             flash('Nenhum livro encontrado para a busca realizada.', 'warning')
     return render_template('admin/livros.html', livros=livros)
 
-#---emprestimos---#
-@app.route('/empretimos', methods=['GET'])
+#---livros emprestados---#
+@app.route('/livros_emprestimos', methods=['GET'])
 @login_necessario
-def emprestimos():
+def livros_emprestimos():
+
+    conn = conexao()
+    livros_emprestados = conn.execute('SELECT * FROM emprestimos')
+    return render_template('admin/emprestados.html', livros=livros_emprestados)
+
+#---emprestimo---#
+
 
     
-    return render_template('admin/empretimos.html', livros=livros)
 
 #---adicionar livro---#
 @app.route('/add_livro', methods=['GET', 'POST'])
@@ -282,8 +291,91 @@ def usuarios():
         return redirect(url_for('menu_principal'))
 
     conn = conexao()
-    usuarios = conn.execute('SELECT * FROM usuarios')
+    usuarios = conn.execute('SELECT * FROM usuarios WHERE id != ?', (session['usuario_id'],)).fetchall()
     return render_template('admin/usuarios.html', usuarios=usuarios)
+
+#---editar perfil do usuário---#
+@app.route('/editar_perfil', methods=['GET', 'POST'])
+@login_necessario
+def editar_perfil():
+
+    usuario_id = session['usuario_id']
+
+    conn = conexao()
+
+    try:
+        usuario = conn.execute(
+            "SELECT * FROM usuarios WHERE id=?",
+            (usuario_id,)
+        ).fetchone()
+
+        if usuario is None:
+            flash('Usuário não encontrado.', 'danger')
+            return redirect(url_for('menu_principal'))
+
+        if request.method == 'POST':
+
+            nome = request.form.get('nome', '').strip()
+            senha = request.form.get('senha', '')
+            confirmar_senha = request.form.get('confirmar_senha', '')
+
+            if not nome:
+                flash('Erro: O nome do usuário é obrigatório.', 'danger')
+                return render_template(
+                    'admin/editar_perfil.html',
+                    nome=nome
+                )
+
+            if senha != confirmar_senha:
+                flash('Erro: As senhas não coincidem.', 'danger')
+                return render_template(
+                    'admin/editar_perfil.html',
+                    nome=nome
+                )
+
+            if len(senha) < 8:
+                flash('Erro: A senha deve ter pelo menos 8 caracteres.', 'danger')
+                return render_template(
+                    'admin/editar_perfil.html',
+                    nome=nome
+                )
+
+            senha_hash = bcrypt.generate_password_hash(senha).decode('utf-8')
+
+            conn.execute(
+                """
+                UPDATE usuarios
+                SET nome=?, senha=?
+                WHERE id=?
+                """,
+                (nome, senha_hash, usuario_id)
+            )
+
+            conn.commit()
+
+            # Atualiza o nome da sessão
+            session['usuario'] = nome
+
+            flash('Perfil editado com sucesso!', 'success')
+
+            return redirect(url_for('menu_principal'))
+
+        return render_template(
+            'admin/editar_perfil.html',
+            nome=usuario['nome']
+        )
+
+    except sqlite3.IntegrityError:
+        flash('Erro: Nome de usuário já existe.', 'danger')
+
+        return render_template(
+            'admin/editar_perfil.html',
+            nome=request.form.get('nome', '')
+        )
+
+    finally:
+        conn.close()      
+
 
 #---buscar usuarios---#        
 @app.route('/buscar_usuarios', methods=['GET'])
@@ -298,12 +390,12 @@ def buscar_usuarios():
     query = request.args.get('query', '').strip()
 
     conn = conexao()
-    usuarios = conn.execute('SELECT * FROM usuarios')
+    usuarios = conn.execute('SELECT * FROM usuarios WHERE id != ?', (session['usuario_id'],)).fetchall()
 
     if query:
         usuarios = conn.execute(
-            'SELECT * FROM usuarios WHERE nome LIKE ?', 
-            (f'%{query}%',)
+            'SELECT * FROM usuarios WHERE nome LIKE ? AND id != ?', 
+            (f'%{query}%', session['usuario_id'])
         ).fetchall()
 
         if not usuarios:
@@ -353,28 +445,89 @@ def promover_usuario(id):
 def rebaixar_usuario(id):
 
     if not usuario_max():
-        flash('Você não tem permissão para acessar essa página')
+        flash('Você não tem permissão para acessar essa página.', 'danger')
         return redirect(url_for('menu_principal'))
 
     conn = conexao()
-    cursor = conn.execute("SELECT perfil FROM usuarios WHERE id=?", (id,))
-    usuario = cursor.fetchone()
-    
-    if usuario is None:
-        conn.close()
-        flash('Usuário não encontrado.', 'error')
-        return redirect(url_for('usuarios'))
-    
-    elif usuario['perfil'] == 'max':
-        conn.execute("UPDATE usuarios SET perfil='usuario' WHERE id=?", (id,))
-        conn.commit()
 
-        flash('Usuário rebaixado para Usuário comum com sucesso!', 'success')
-        return redirect(url_for('usuarios'))
-    else:
+    try:
+        cursor = conn.execute(
+            "SELECT perfil FROM usuarios WHERE id=?",
+            (id,)
+        )
+
+        usuario = cursor.fetchone()
+
+        if usuario is None:
+            flash('Usuário não encontrado.', 'error')
+            return redirect(url_for('usuarios'))
+
+        # MAX → ADMIN
+        elif usuario['perfil'] == 'max':
+
+            # Primeiro verifica se existe OUTRO MAX
+            existe_outro_max = conn.execute(
+                """
+                SELECT COUNT(*) AS total
+                FROM usuarios
+                WHERE perfil='max'
+                AND id != ?
+                """,
+                (id,)
+            ).fetchone()
+
+            # Se não existir outro MAX, bloqueia
+            if existe_outro_max['total'] == 0:
+                flash(
+                    'Não há outro usuário com perfil "max". '
+                    'Você não pode rebaixar o último usuário "max".',
+                    'error'
+                )
+                return redirect(url_for('usuarios'))
+
+            # Agora pode rebaixar
+            conn.execute(
+                "UPDATE usuarios SET perfil='admin' WHERE id=?",
+                (id,)
+            )
+
+            conn.commit()
+
+            flash(
+                'Usuário rebaixado para Administrador com sucesso!',
+                'success'
+            )
+
+            return redirect(url_for('usuarios'))
+
+        # ADMIN → USUARIO
+        elif usuario['perfil'] == 'admin':
+
+            conn.execute(
+                "UPDATE usuarios SET perfil='usuario' WHERE id=?",
+                (id,)
+            )
+
+            conn.commit()
+
+            flash(
+                'Usuário rebaixado para Usuário com sucesso!',
+                'success'
+            )
+
+            return redirect(url_for('usuarios'))
+
+        # USUARIO → não pode rebaixar
+        else:
+            flash(
+                'Este usuário já é um Usuário comum.',
+                'warning'
+            )
+            return redirect(url_for('usuarios'))
+
+    finally:
         conn.close()
-        flash('Este usuário não é um administrador.', 'error')
-        return redirect(url_for('usuarios'))
+
     
 #---deletar usuario---#
 @app.route('/usuarios/deletar/<int:id>', methods=['POST'])
@@ -413,6 +566,11 @@ def deletar_livro(id):
 @app.route('/logout')
 @login_necessario
 def logout():
+    
+    if not usuario_logado():
+        flash('VÁ LOGAR', 'error')
+        return redirect(url_for('login'))
+
     session.clear()
     return redirect(url_for('login'))
 
@@ -420,7 +578,10 @@ def logout():
 @app.route('/menu_principal')
 @login_necessario
 def menu_principal():
-
+    if not usuario_logado():
+        flash('VÁ LOGAR', 'error')
+        return redirect(url_for('login'))
+    
     return render_template('admin/card.html')
 
 

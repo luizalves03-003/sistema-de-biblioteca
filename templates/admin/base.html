@@ -95,17 +95,29 @@
             <li class="nav-item dropdown user-menu">
               <a href="#" class="nav-link dropdown-toggle" data-bs-toggle="dropdown">
                 <img src="{{ url_for('static', filename='css/dist/assets/img/user1.jpg') }}" class="user-image rounded-circle shadow" alt="User Image" />
-                <span class="d-none d-md-inline">Luiz Cauã</span>
+                <span class="d-none d-md-inline">{{ session['usuario'] }}</span>
               </a>
               <ul class="dropdown-menu dropdown-menu-lg dropdown-menu-end">
                 <li class="user-header text-bg-primary">
                   <img src="{{ url_for('static', filename='css/dist/assets/img/user1.jpg') }}" class="rounded-circle shadow" alt="User Image" />
                   <p>
-                    Luiz Cauã - Bibliotecário
+                    {{ session['usuario'] }} - 
+
+                    {% if session['perfil'] == 'max' %}
+                        Administrador Máximo
+                      
+                    {% elif session['perfil'] == 'admin' %}
+                        Administrador
+
+                    {% else %}
+                        Usuário
+
+                    {% endif %}
                     <small>Membro desde Set. 2026</small>
                   </p>
                 </li>
                 <li class="user-footer">
+                  <a href="{{ url_for('editar_perfil', id=session['usuario_id']) }}" class="btn btn-outline-warning float-end">Editar</a>
                   <a href="{{ url_for('logout') }}" class="btn btn-outline-danger float-end">Sair</a>
                 </li>
               </ul>
@@ -145,12 +157,16 @@
                       <p>Livros da Biblioteca</p>
                     </a>
                   </li>
+
+                  {% if session.get('perfil') in ['max', 'admin'] %}
                   <li class="nav-item">
                     <a href="{{ url_for('usuarios') }}" class="nav-link">
                       <i class="nav-icon bi bi-people"></i>
                       <p>Usuários</p>
                     </a>
                   </li>
+                  {% endif %}
+
                 </ul>
               </li>
             </ul>

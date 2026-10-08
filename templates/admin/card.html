@@ -5,6 +5,19 @@
 {% block content  %}
 
           <main class="app-main">
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, message in messages %}
+          <div class="alert alert-{{ category if category != 'danger' else 'danger' }} alert-dismissible fade show" role="alert">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+          </div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+
+
         <!--begin::App Content Header-->
         <div class="app-content-header">
           <div class="container-fluid">
@@ -39,7 +52,7 @@
                   </a>
                 </div>
               </div>
-
+              {% if session.get('perfil') in ['max', 'admin'] %}
               <!-- Card 2: Livros Emprestados -->
               <div class="col-lg-3 col-6">
                 <div class="small-box text-bg-success">
@@ -49,7 +62,7 @@
                   </div>
                   <i class="small-box-icon bi bi-arrow-left-right"></i>
                   <a
-                    href="/book_lending"
+                    href="#"
                     class="small-box-footer link-light link-underline-opacity-0 link-underline-opacity-50-hover"
                   >
                     Mais informações <i class="bi bi-arrow-right-circle"></i>
@@ -73,6 +86,7 @@
                   </a>
                 </div>
               </div>
+              {% endif %}
 
               <!-- Card 4: Categorias -->
               <div class="col-lg-3 col-6">
