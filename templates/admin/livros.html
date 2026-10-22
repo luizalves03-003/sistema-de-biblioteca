@@ -9,7 +9,6 @@
         <a href="{{ url_for('menu_principal') }}" class="btn btn-info bi bi-arrow-left"></a>
     </div>
 
-
     {% with messages = get_flashed_messages(with_categories=true) %}
       {% if messages %}
         {% for category, message in messages %}
@@ -40,12 +39,11 @@
         {% else %}
             <h6 class="m-0">Nenhum livro Disponível</h6>
         {% endif %}
-
     </div>
 
     {% if session.get('perfil') in ['max', 'admin'] %}
     <div class="d-flex justify-content-end mb-3">
-        <a href="{{ url_for('add_livro') }}" class="btn btn-primary bi bi-plus">Adicionar Livro</a>
+        <a href="{{ url_for('add_livro') }}" class="btn btn-primary bi bi-plus"> Adicionar Livro</a>
     </div>
     {% endif %}
 
@@ -54,36 +52,46 @@
         <thead>
           <tr>
             <th class="text-center" style="width: 50px;">ID</th>
-            <th>Título</th>
-            <th>Autor</th>
-            <th>Gênero</th>
-            <th class="text-center">Lançado</th>
+            <th class="text-center" style="width: 150px;">Capa</th>
+            <th class="text-center" style="width: 150px;">Título</th>
+            <th class="text-center" style="width: 150px;">Autor</th>
+            <th class="text-center" style="width: 150px;">Gênero</th>
+            <th class="text-center" style="width: 100px;">Lançado</th>
             <th class="text-center" style="width: 120px;">Ações</th>
           </tr>
         </thead>
         <tbody>
           {% for livro in livros %}
             <tr>
+              <!-- Se preferir o ID do banco, use livro.id -->
               <td class="text-center fw-bold text-muted">{{ loop.index }}</td>
-              <td class="fw-bold">{{ livro.titulo }}</td>
-              <td><span class="badge bg-secondary">{{ livro.autor }}</span></td>
-              <td><span class="badge bg-secondary">{{ livro.genero }}</span></td>
-              <td><span class="badge bg-secondary">{{ livro.lancado }}</span></td>
               <td class="text-center">
-                {% if session['perfil'] == 'admin' or session['perfil'] == 'max' %}
-                <a href="/edit/{{ livro.id }}" class="btn btn-primary btn-sm"><i class="bi bi-pencil"></i></a>
-                
-                <form action="/livros/deletar/{{ livro.id }}" method="POST" class="d-inline" onsubmit="return confirm('Realmente deseja excluir esse livro?')">
-                  <button type="submit" class="btn btn-danger btn-sm"><i class="bi bi-trash"></i></button>
-                </form>
+              {% if livro.imagem %}
+                <img src="{{ url_for('static', filename=livro.imagem) }}" style="max-width: 150px; max-height: 150px; object-fit: cover;" alt="{{ livro.titulo }}" class="img-thumbnail">
+              {% else %}
+                <span class="placeholder-image"><i class="bi bi-image text-secondary fs-3"></i></span>
+              {% endif %}
+              </td>
+              <td class="fw-bold" style="font-size: 24px;">{{ livro.titulo }}</td>
+              <td class="text-center" style="font-size: 24px;"><span class="badge bg-secondary">{{ livro.autor }}</span></td>
+              <td class="text-center" style="font-size: 24px;"><span class="badge bg-secondary">{{ livro.genero }}</span></td>
+              <td class="text-center" style="font-size: 24px;"><span class="badge bg-secondary">{{ livro.lancado }}</span></td>
+              <td class="text-center" style="font-size: 24px;">
+                {% if session.get('perfil') in ['admin', 'max'] %}
+                    <a href="/edit/{{ livro.id }}" class="btn btn-primary btn-sm"><i class="bi bi-pencil" style="font-size: 24px;"></i></a>
+                    
+                    <form action="/livros/deletar/{{ livro.id }}" method="POST" class="d-inline" onsubmit="return confirm('Realmente deseja excluir esse livro?')">
+                      <button type="submit" class="btn btn-danger btn-sm"><i class="bi bi-trash" style="font-size: 24px;"></i></button>
+                    </form>
                 {% else %}
-                <a href="#" class="btn btn-success btn-sm disabled">pedir</a>
+                    <a href="#" class="btn btn-success btn-sm disabled">pedir</a>
                 {% endif %}
               </td>
           </tr>
           {% else %}
           <tr>
-            <td colspan="6" class="text-center py-4 text-muted">
+            <!-- Corrigido para 7 colunas para bater com o thead -->
+            <td colspan="7" class="text-center py-4 text-muted">
                 Nenhum livro encontrado.
             </td>
           </tr>

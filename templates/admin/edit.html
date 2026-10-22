@@ -1,57 +1,53 @@
 {% extends "admin/base.html" %}
 
-{% block content  %}
+{% block content %}
           
           <main class="app-main">
 
             <div class="d-flex justify-content-between align-items-center mb-4">
                 <h1 class="h3 m-0">Editar Livro</h1>
-                <a href="/livros"><button type="button" class="btn btn-info  bi bi-arrow-left"></button></a>
+                <a href="/livros" class="btn btn-info bi bi-arrow-left"></a>
             </div>
 
-            <div class="table-responsive shadow-sm rounded">
-                <table class="table table-bordered align-middle mb-0">
-                    <thead>
-                        <tr>
-                            <th class="text-center" style="width: 50px;">ID</th>
-                            <th>Título</th>
-                            <th>Autor</th>
-                            <th>Gênero</th>
-                            <th class="text-center">Lançado</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr>
-                            <td class="text-center fw-bold text-muted">{{ livro.id }}</td>
-                            <td class="fw-bold">{{ livro.titulo }}</td>
-                            <td><span class="badge bg-secondary">{{ livro.autor }}</span></td>
-                            <td><span class="badge bg-info text-dark">{{ livro.genero }}</span></td>
-                            <td><span class="badge bg-warning text-dark">{{ livro.lancado }}</span></td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-        
-            <form action="/edit/{{ livro.id }}" method="POST">
-                <div class="form-group">
-                    <label for="titulo">Título:</label>
-                    <input type="text" class="form-control" id="titulo" name="titulo" value="{{ livro[1] }}" required>
+            <!-- Formulário de Edição -->
+            <form action="/edit/{{ livro.id }}" method="POST" enctype="multipart/form-data" class="needs-validation" novalidate>
+                
+                <div class="mb-3">
+                    <label for="titulo" class="form-label">Título:</label>
+                    <input type="text" class="form-control" id="titulo" name="titulo" value="{{ livro.titulo }}" required>
                 </div>
-                <div class="form-group">
-                    <label for="autor">Autor:</label>
-                    <input type="text" class="form-control" id="autor" name="autor" value="{{ livro[2] }}" required>
+
+                <div class="mb-3">
+                    <label for="autor" class="form-label">Autor:</label>
+                    <input type="text" class="form-control" id="autor" name="autor" value="{{ livro.autor }}" required>
                 </div>
-                <div class="form-group">
-                    <label for="genero">Gênero:</label>
-                    <input type="text" class="form-control" id="genero" name="genero" value="{{ livro[3] }}" required>
+
+                <div class="mb-3">
+                    <label for="genero" class="form-label">Gênero:</label>
+                    <input type="text" class="form-control" id="genero" name="genero" value="{{ livro.genero }}" required>
                 </div>
-                <div class="form-group">    
-                    <label for="lancado">Lançado:</label>
-                    <input type="number" class="form-control" id="lancado" name="lancado" value="{{ livro[4] }}" required>
+
+                <div class="mb-3">    
+                    <label for="lancado" class="form-label">Lançado (Ano):</label>
+                    <input type="number" class="form-control" id="lancado" name="lancado" value="{{ livro.lancado }}" required>
                 </div>
+
+                <div class="mb-3">
+                    <label for="imagem" class="form-label">Capa Atual:</label>
+                    <div class="mb-2">
+                        {% if livro.imagem %}
+                            <img src="{{ url_for('static', filename=livro.imagem) }}" style="max-width: 200px; max-height: 200px;" alt="{{ livro.titulo }}" class="img-thumbnail">
+                        {% else %}
+                            <span class="text-muted">Nenhuma imagem cadastrada</span>
+                        {% endif %}
+                    </div>
+                    <label for="imagem" class="form-label">Alterar Capa:</label>
+                    <input type="file" class="form-control" id="imagem" name="imagem" accept="image/png,image/jpeg,image/gif,image/webp">
+                </div>
+
                 <button type="submit" class="btn btn-primary" onclick="return confirm('Realmente deseja alterar esse livro?')">Alterar Livro</button>
             </form>
 
-      </main>
+          </main>
 
 {% endblock %}

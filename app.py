@@ -3,12 +3,50 @@ import sqlite3
 from flask_bcrypt import Bcrypt
 from datetime import datetime
 from functools import wraps
-
+from werkzeug.security import generate_password_hash
+from werkzeug.utils import secure_filename
+from pathlib import Path
+import uuid
 
 app = Flask(__name__)
 DATABASE = 'database.db'
 app.secret_key = 'your_secret_key'
 bcrypt = Bcrypt(app)
+
+app.config['UPLOAD_FOLDER'] = Path(app.root_path) / 'static' / 'uploads'
+app.config['MAX_CONTENT_LENGTH'] = 5 * 1024 * 1024
+
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'webp'}
+app.config['UPLOAD_FOLDER'].mkdir(parents=True, exist_ok=True)
+
+
+def extensao_permitida(nome_arquivo):
+    return '.' in nome_arquivo and nome_arquivo.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+
+def salvar_imagem(arquivo, prefixo='imagem'):
+    """Salva a imagem em static/uploads e retorna o caminho relativo usado pelo url_for('static')."""
+    if not arquivo or not arquivo.filename:
+        return None
+
+    nome_original = secure_filename(arquivo.filename)
+    if not extensao_permitida(nome_original):
+        raise ValueError(
+            'Formato de imagem não permitido. Use PNG, JPG, JPEG, GIF ou WEBP.')
+
+    extensao = nome_original.rsplit('.', 1)[1].lower()
+    nome = f'{prefixo}_{uuid.uuid4().hex}.{extensao}'
+    arquivo.save(app.config['UPLOAD_FOLDER'] / nome)
+    return f'uploads/{nome}'
+
+
+def excluir_imagem(caminho):
+    """Remove apenas arquivos armazenados em static/uploads."""
+    if not caminho or not caminho.startswith('uploads/'):
+        return
+    arquivo = Path(app.root_path) / 'static' / caminho
+    if arquivo.exists() and arquivo.is_file():
+        arquivo.unlink()
 
 
 def init_db():
@@ -20,7 +58,9 @@ def init_db():
                 titulo TEXT NOT NULL,
                 autor TEXT NOT NULL,
                 genero TEXT NOT NULL,
-                lancado INTEGER NOT NULL
+                lancado INTEGER NOT NULL,
+                imagem TEXT
+
             )
         '''),
 
@@ -31,10 +71,8 @@ def init_db():
                 senha TEXT NOT NULL,
                 perfil TEXT NOT NULL DEFAULT 'usuario'
             )
-            
+
         '''),
-
-
 
         conn.execute('''
                 CREATE TABLE IF NOT EXISTS emprestimos(
@@ -43,7 +81,7 @@ def init_db():
                      livro_id INTEGER NOT NULL,
                      data_emprestimo TEXT,
                      devolver INTEGER DEFAULT 0,
-                     
+
                      FOREIGN KEY(usuario_id) REFERENCES usuarios(id),
                      FOREIGN KEY(livro_id) REFERENCES livros(id)
         )
@@ -53,28 +91,37 @@ def init_db():
         total_usuarios = cursor.fetchone()[0]
 
         if total_usuarios == 0:
-            senha_usermax = bcrypt.generate_password_hash('max123').decode('utf-8')
-            cursor.execute('INSERT INTO usuarios (nome, senha, perfil) VALUES (?, ?, ?)', ('usermax', senha_usermax, 'max'))
-        
+            senha_usermax = bcrypt.generate_password_hash(
+                'max123').decode('utf-8')
+            cursor.execute('INSERT INTO usuarios (nome, senha, perfil) VALUES (?, ?, ?)',
+                           ('usermax', senha_usermax, 'max'))
+
         conn.commit()
 
         print("\n ---- BIBLIOTECA ABERTA ---- ")
 
-#---conexao com o banco de dados---#
+# ---conexao com o banco de dados---#
+
+
 def conexao():
     conn = sqlite3.connect(DATABASE)
     conn.row_factory = sqlite3.Row
     return conn
 
-#---verifica se o usuario está logado---#
+# ---verifica se o usuario está logado---#
+
+
 def usuario_logado():
     return 'usuario_id' in session
+
 
 def administrador():
     return session.get('perfil') in ('admin', 'max')
 
+
 def usuario_max():
     return session.get('perfil') == 'max'
+
 
 def login_necessario(func):
     @wraps(func)
@@ -87,14 +134,18 @@ def login_necessario(func):
         return func(*args, **kwargs)
     return verificar_login
 
+
 def existe_outro_max(usuario_id):
     conn = conexao()
-    cursor = conn.execute("SELECT COUNT(*) FROM usuarios WHERE perfil='max' AND id != ?", (usuario_id,))
+    cursor = conn.execute(
+        "SELECT COUNT(*) FROM usuarios WHERE perfil='max' AND id != ?", (usuario_id,))
     count = cursor.fetchone()[0]
     conn.close()
     return count > 0
 
-#---livros---#
+# ---livros---#
+
+
 @app.route('/livros', methods=['GET'])
 @login_necessario
 def livros():
@@ -103,7 +154,9 @@ def livros():
     livros = conn.execute('SELECT * FROM livros')
     return render_template('admin/livros.html', livros=livros)
 
-#---buscar livros---#
+# ---buscar livros---#
+
+
 @app.route('/buscar_livros', methods=['GET'])
 @login_necessario
 def buscar_livros():
@@ -115,15 +168,17 @@ def buscar_livros():
 
     if query:
         livros = conn.execute(
-            'SELECT * FROM livros WHERE titulo LIKE ? OR autor LIKE ? OR genero LIKE ?', 
+            'SELECT * FROM livros WHERE titulo LIKE ? OR autor LIKE ? OR genero LIKE ?',
             (f'%{query}%', f'%{query}%', f'%{query}%')
-            ).fetchall()
+        ).fetchall()
 
         if not livros:
             flash('Nenhum livro encontrado para a busca realizada.', 'warning')
     return render_template('admin/livros.html', livros=livros)
 
-#---livros emprestados---#
+# ---livros emprestados---#
+
+
 @app.route('/livros_emprestimos', methods=['GET'])
 @login_necessario
 def livros_emprestimos():
@@ -132,12 +187,10 @@ def livros_emprestimos():
     livros_emprestados = conn.execute('SELECT * FROM emprestimos')
     return render_template('admin/emprestados.html', livros=livros_emprestados)
 
-#---emprestimo---#
+# ---emprestimo---#
 
 
-    
-
-#---adicionar livro---#
+# ---adicionar livro---#
 @app.route('/add_livro', methods=['GET', 'POST'])
 @login_necessario
 def add_livro():
@@ -152,16 +205,19 @@ def add_livro():
         autor = request.form['autor']
         genero = request.form['genero']
         lancado = request.form['lancado']
-
+        imagem = request.files['imagem']
+        caminho_imagem = salvar_imagem(imagem, 'livro')
         conn = conexao()
         conn.execute(
-                'INSERT INTO livros (titulo, genero, autor, lancado) VALUES (?, ?, ?, ?)', (titulo, genero, autor, lancado))
+            'INSERT INTO livros (titulo, genero, autor, lancado, imagem) VALUES (?, ?, ?, ?, ?)', (titulo, genero, autor, lancado, caminho_imagem))
         conn.commit()
 
         return redirect(url_for('livros'))
     return render_template('admin/add_livro.html')
 
-#---editar livro---#
+# ---editar livro---#
+
+
 @app.route('/edit/<int:id>', methods=['POST', 'GET'])
 @login_necessario
 def edit(id):
@@ -175,15 +231,16 @@ def edit(id):
         autor = request.form.get('autor')
         genero = request.form.get('genero')
         lancado = request.form.get('lancado')
+        imagem = request.files.get('imagem')
+        caminho_imagem = salvar_imagem(imagem, 'livro')
 
         conn = conexao()
         cursor = conn.execute(
-                "UPDATE livros SET titulo=?, autor=?, genero=?, lancado=? WHERE id=?", (
-                    titulo, autor, genero, lancado, id)
-            )
+            "UPDATE livros SET titulo=?, autor=?, genero=?, lancado=?, imagem=? WHERE id=?", (
+                titulo, autor, genero, lancado, caminho_imagem if imagem else None, id)
+        )
         conn.commit()
         return redirect(url_for('livros'))
-    
 
     conn = conexao()
     livro = conn.execute("SELECT * FROM livros WHERE id = ?", (id,)).fetchone()
@@ -193,7 +250,33 @@ def edit(id):
 
     return render_template('admin/edit.html', livro=livro)
 
-#---login do usuario---#
+
+# ---deletar livro---#
+@app.route('/livros/deletar/<int:id>', methods=['POST'])
+@login_necessario
+def deletar_livro(id):
+
+    if not administrador():
+        flash('Você não tem permissão para acessar essa página')
+        return redirect(url_for('menu_principal'))
+ 
+    if request.method == 'POST':
+        conn = conexao()
+        cursor = conn.execute("SELECT imagem FROM livros WHERE id=?", (id,))
+        livro = cursor.fetchone()
+
+        if livro and livro['imagem']:
+            excluir_imagem(livro['imagem'])
+
+        cursor = conn.execute("DELETE FROM livros WHERE id=?", (id,))
+
+    if cursor.rowcount == 0:
+        return jsonify({'erro': 'Livro não encontrado'}), 404
+    conn.commit()
+    return redirect(url_for('livros'))
+
+
+# ---login do usuario---#
 @app.route("/login", methods=['GET', 'POST'])
 def login():
 
@@ -211,8 +294,8 @@ def login():
                 "SELECT * FROM usuarios WHERE nome=?", (nome,)).fetchone()
 
             if usuario is None:
-               flash('Usuário ou senha incorretos.', 'error')
-               return render_template('admin/login.html')
+                flash('Usuário ou senha incorretos.', 'error')
+                return render_template('admin/login.html')
 
             senha_correta = bcrypt.check_password_hash(usuario['senha'], senha)
 
@@ -233,7 +316,7 @@ def login():
     return render_template('admin/login.html')
 
 
-#---cadastro de usuarios---#
+# ---cadastro de usuarios---#
 @app.route('/cadastro', methods=['GET', 'POST'])
 @login_necessario
 def cadastro():
@@ -265,23 +348,25 @@ def cadastro():
         conn = conexao()
         try:
             conn.execute(
-                "INSERT INTO usuarios (nome, senha, perfil) VALUES (?, ?, ?)", 
+                "INSERT INTO usuarios (nome, senha, perfil) VALUES (?, ?, ?)",
                 (nome, senha_hash, perfil)
             )
             conn.commit()
-            
+
             flash('Usuário cadastrado com sucesso!', 'success')
             return redirect(url_for('usuarios'))
 
         except sqlite3.IntegrityError:
             flash('Erro: Nome de usuário já existe.', 'danger')
             return render_template('admin/cadastro.html', nome=nome, perfil=perfil)
-            
+
         finally:
             conn.close()
     return render_template('admin/cadastro.html')
 
-#---listar usuarios---#
+# ---listar usuarios---#
+
+
 @app.route('/usuarios', methods=['GET'])
 @login_necessario
 def usuarios():
@@ -291,10 +376,13 @@ def usuarios():
         return redirect(url_for('menu_principal'))
 
     conn = conexao()
-    usuarios = conn.execute('SELECT * FROM usuarios WHERE id != ?', (session['usuario_id'],)).fetchall()
+    usuarios = conn.execute(
+        'SELECT * FROM usuarios WHERE id != ?', (session['usuario_id'],)).fetchall()
     return render_template('admin/usuarios.html', usuarios=usuarios)
 
-#---editar perfil do usuário---#
+# ---editar perfil do usuário---#
+
+
 @app.route('/editar_perfil', methods=['GET', 'POST'])
 @login_necessario
 def editar_perfil():
@@ -374,10 +462,10 @@ def editar_perfil():
         )
 
     finally:
-        conn.close()      
+        conn.close()
 
 
-#---buscar usuarios---#        
+# ---buscar usuarios---#
 @app.route('/buscar_usuarios', methods=['GET'])
 @login_necessario
 def buscar_usuarios():
@@ -386,15 +474,15 @@ def buscar_usuarios():
         flash('Você não tem permissão para acessar essa página')
         return redirect(url_for('menu_principal'))
 
-
     query = request.args.get('query', '').strip()
 
     conn = conexao()
-    usuarios = conn.execute('SELECT * FROM usuarios WHERE id != ?', (session['usuario_id'],)).fetchall()
+    usuarios = conn.execute(
+        'SELECT * FROM usuarios WHERE id != ?', (session['usuario_id'],)).fetchall()
 
     if query:
         usuarios = conn.execute(
-            'SELECT * FROM usuarios WHERE nome LIKE ? AND id != ?', 
+            'SELECT * FROM usuarios WHERE nome LIKE ? AND id != ?',
             (f'%{query}%', session['usuario_id'])
         ).fetchall()
 
@@ -403,7 +491,7 @@ def buscar_usuarios():
     return render_template('admin/usuarios.html', usuarios=usuarios)
 
 
-#---promover usuario---#
+# ---promover usuario---#
 @app.route('/usuarios/promover/<int:id>', methods=['POST'])
 @login_necessario
 def promover_usuario(id):
@@ -415,7 +503,7 @@ def promover_usuario(id):
     conn = conexao()
     cursor = conn.execute("SELECT perfil FROM usuarios WHERE id=?", (id,))
     usuario = cursor.fetchone()
-    
+
     if usuario is None:
         flash('Usuário não encontrado.', 'error')
         return redirect(url_for('usuarios'))
@@ -423,7 +511,7 @@ def promover_usuario(id):
     elif usuario['perfil'] == 'max':
         conn.execute("UPDATE usuarios SET perfil='usuario' WHERE id=?", (id,))
         conn.commit()
-    
+
     elif usuario['perfil'] == 'admin':
         conn.execute("UPDATE usuarios SET perfil='max' WHERE id=?", (id,))
         conn.commit()
@@ -439,7 +527,9 @@ def promover_usuario(id):
     conn.close()
     return redirect(url_for('usuarios'))
 
-#---rebaixar usuario---#
+# ---rebaixar usuario---#
+
+
 @app.route('/usuarios/rebaixar/<int:id>', methods=['POST'])
 @login_necessario
 def rebaixar_usuario(id):
@@ -528,8 +618,8 @@ def rebaixar_usuario(id):
     finally:
         conn.close()
 
-    
-#---deletar usuario---#
+
+# ---deletar usuario---#
 @app.route('/usuarios/deletar/<int:id>', methods=['POST'])
 @login_necessario
 def deletar_usuario(id):
@@ -545,28 +635,12 @@ def deletar_usuario(id):
     conn.commit()
     return redirect(url_for('usuarios'))
 
-#---deletar livro---#
-@app.route('/livros/deletar/<int:id>', methods=['POST'])
-@login_necessario
-def deletar_livro(id):
 
-    if not administrador():
-        flash('Você não tem permissão para acessar essa página')
-        return redirect(url_for('menu_principal'))
-
-    conn = conexao()
-    cursor = conn.execute("DELETE FROM livros WHERE id=?", (id,))
-
-    if cursor.rowcount == 0:
-        return jsonify({'erro': 'Livro não encontrado'}), 404
-    conn.commit()
-    return redirect(url_for('livros'))
-
-#---logout do usuario---#
+# ---logout do usuario---#
 @app.route('/logout')
 @login_necessario
 def logout():
-    
+
     if not usuario_logado():
         flash('VÁ LOGAR', 'error')
         return redirect(url_for('login'))
@@ -574,20 +648,23 @@ def logout():
     session.clear()
     return redirect(url_for('login'))
 
-#---menu principal---#
+# ---menu principal---#
+
+
 @app.route('/menu_principal')
 @login_necessario
 def menu_principal():
     if not usuario_logado():
         flash('VÁ LOGAR', 'error')
         return redirect(url_for('login'))
-    
+
     return render_template('admin/card.html')
 
 
 @app.route('/')
 def index():
     return render_template('admin/login.html')
+
 
 if __name__ == '__main__':
     init_db()
