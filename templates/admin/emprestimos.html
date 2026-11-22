@@ -1,45 +1,70 @@
 {% extends "admin/base.html" %}
 
+{% block content %}
+<main class="app-main">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="h3 m-0">Gerenciar Empréstimos</h1>
+        <a href="{{ url_for('menu_principal') }}" class="btn btn-info bi bi-arrow-left"> Voltar</a>
+    </div>
 
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, message in messages %}
+          <div class="alert alert-{{ category if category != 'error' else 'danger' }} alert-dismissible fade show" role="alert">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+          </div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
 
-{% block content  %}
-
-    <main class="app-main">
-
-            <div class="d-flex justify-content-between align-items-center mb-4">
-                <h1 class="h3 m-0">Lista de Emprestimos</h1>
-                <a href="/"><button type="button" class="btn btn-info  bi bi-arrow-left"></button></a>
-            </div>
-
-            {% if livros %}
-              <h6>Todos os Livros Disponíveis</h6>
-            {% else %}
-              <h6>Nenhum livro encontrado</h6>
-            {% endif %}
-
-            <table class="table table-bordered">
-              <thead>
-                <tr>
-                  
-                  <th>ID</th>
-                  <th>Título</th>
-                  <th>Autor</th>
-                  <th>Gênero</th>
-
-                </tr>
-              </thead>
-              <tbody>
-                {% for livro in livros %}
-                <tr>
-                  <td>{{ livro[0] }}</td>
-                  <td>{{ livro[1] }}</td>
-                  <td>{{ livro[2] }}</td>
-                  <td>{{ livro[3] }}</td>
-                  <td>{{ livro[4] }}</td>
-                </tr>
-                {% endfor %}
-              </tbody>
-            </table>
-  </main>
-
+    <div class="table-responsive shadow-sm rounded">
+      <table class="table table-bordered align-middle mb-0">
+        <thead>
+          <tr>
+            <th class="text-center" style="width: 50px;">ID</th>
+            <th>Usuário</th>
+            <th>Livro</th>
+            <th class="text-center">Data do Empréstimo</th>
+            <th class="text-center">Status</th>
+            <th class="text-center" style="width: 140px;">Ações</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for emp in emprestimos %}
+          <tr>
+            <td class="text-center fw-bold text-muted">{{ loop.index }}</td>
+            <td>{{ emp.usuario }}</td>
+            <td class="fw-bold">{{ emp.livro }}</td>
+            <td class="text-center">{{ emp.data_emprestimo }}</td>
+            <td class="text-center">
+              {% if emp.devolver == 0 %}
+                <span class="badge bg-warning text-dark">Emprestado</span>
+              {% else %}
+                <span class="badge bg-success">Devolvido</span>
+              {% endif %}
+            </td>
+            <td class="text-center">
+              {% if emp.devolver == 0 %}
+                <form action="{{ url_for('devolver_emprestimo', id=emp.id) }}" method="POST" class="d-inline">
+                  <button type="submit" class="btn btn-primary btn-sm" title="Devolver Livro">
+                    <i class="bi bi-check-circle"></i> Devolver
+                  </button>
+                </form>
+              {% else %}
+                <span class="text-muted small">Finalizado</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="6" class="text-center py-4 text-muted">
+                Nenhum empréstimo registrado.
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+</main>
 {% endblock %}

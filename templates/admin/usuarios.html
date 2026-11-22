@@ -39,6 +39,7 @@
         <thead>
           <tr>
             <th class="text-center" style="width: 50px;">ID</th>
+            <th class="text-center" style="width: 150px;">Foto</th>
             <th>Nome</th>
             <th class="text-center">Perfil</th>
             <th class="text-center" style="width: 140px;">Ações</th>
@@ -48,9 +49,11 @@
           {% for usuario in usuarios %}
           <tr>
             <td class="text-center fw-bold text-muted">{{ loop.index }}</td>
+            <td class="text-center">
+              <img src="{{ url_for('static', filename=usuario.imagem if usuario.imagem else 'uploads/default_user.png') }}" alt="Foto de {{ usuario.nome }}" class="img-thumbnail" style="width: 100px; height: 100px; object-fit: cover;">
+            </td>
             <td class="fw-bold">{{ usuario.nome }}</td>
             
-            <!-- Badges para os Perfis -->
             <td class="text-center">
               {% if usuario.perfil == 'max' %}
                 <span class="badge bg-info">ADMINISTRADOR MÁXIMO</span>
@@ -61,10 +64,7 @@
               {% endif %}
             </td>
 
-            <!-- Ações Dinâmicas conforme o Perfil -->
             <td class="text-center">
-              
-              <!-- Botão de Promover (Só exibe se NÃO for Max) -->
               {% if usuario.perfil != 'max' %}
                 <form action="{{ url_for('promover_usuario', id=usuario.id) }}" method="POST" class="d-inline" onsubmit="return confirm('Promover este usuário?')">
                   <button type="submit" class="btn btn-success btn-sm" title="Promover">
@@ -73,7 +73,6 @@
                 </form>
               {% endif %}
 
-              <!-- Botão de Rebaixar (Só exibe se NÃO for Usuário Comum) -->
               {% if usuario.perfil != 'usuario' %}
                 <form action="{{ url_for('rebaixar_usuario', id=usuario.id) }}" method="POST" class="d-inline" onsubmit="return confirm('Rebaixar este usuário?')">
                   <button type="submit" class="btn btn-warning btn-sm" title="Rebaixar">
@@ -82,18 +81,17 @@
                 </form>
               {% endif %}
 
-              <!-- Botão de Deletar -->
               <form action="{{ url_for('deletar_usuario', id=usuario.id) }}" method="POST" class="d-inline" onsubmit="return confirm('Realmente deseja excluir esse usuário?')">
                 <button type="submit" class="btn btn-danger btn-sm" title="Excluir">
                   <i class="bi bi-trash"></i>
                 </button>
               </form>
-
             </td>
           </tr>
           {% else %}
           <tr>
-            <td colspan="4" class="text-center py-4 text-muted">
+            <!-- Corrigido de colspan="4" para colspan="5" pois temos 5 colunas -->
+            <td colspan="5" class="text-center py-4 text-muted">
                 Nenhum usuário encontrado.
             </td>
           </tr>
